@@ -191,6 +191,42 @@ body {
   padding: 0.1rem 0.55rem;
 }
 
+/* A small inline label, e.g. "this device" or "🔒 from iPhone". */
+.tag {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  white-space: nowrap;
+}
+
+/* A labelled control inside a card header. */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.field__label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 8px 8px 0;
+  padding: 0.6rem 0.75rem;
+}
+
 /* -------------------------------------------------------------- Devices */
 .devices {
   display: flex;

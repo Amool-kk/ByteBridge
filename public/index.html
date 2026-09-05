@@ -37,20 +37,62 @@
     </header>
 
     <main class="container main">
+      <!-- ------------------------------------------------ Devices section -->
+      <section class="card">
+        <div class="card__header">
+          <h2 class="card__title">Devices <span class="badge" id="deviceCount">0</span></h2>
+          <div class="card__tools">
+            <label class="field">
+              <span class="field__label">This device</span>
+              <input
+                class="search"
+                type="text"
+                id="deviceNameInput"
+                maxlength="40"
+                placeholder="Name this device"
+                aria-label="Name for this device"
+              />
+            </label>
+          </div>
+        </div>
+        <div class="devices" id="deviceList"></div>
+        <p class="empty" id="devicesEmpty">
+          Open this page on another device to send files directly to it.
+        </p>
+      </section>
+
+      <!-- ----------------------------------------------- Requests section -->
+      <section class="card" id="requestsCard" hidden>
+        <h2 class="card__title">Transfer requests</h2>
+        <div class="requests" id="requestList"></div>
+      </section>
+
       <!-- ------------------------------------------------- Upload section -->
       <section class="card">
-        <h2 class="card__title">Upload files</h2>
+        <div class="card__header">
+          <h2 class="card__title">Upload files</h2>
+          <div class="card__tools">
+            <label class="field">
+              <span class="field__label">Send to</span>
+              <select class="search" id="targetSelect" aria-label="Choose who receives these files">
+                <option value="">Everyone on this network</option>
+              </select>
+            </label>
+          </div>
+        </div>
 
         <div class="dropzone" id="dropzone" tabindex="0" role="button"
              aria-label="Choose files or drop them here">
           <div class="dropzone__icon">⬆️</div>
           <p class="dropzone__text"><strong>Drag &amp; drop</strong> files here</p>
-          <p class="dropzone__hint">or click to browse · max <span id="maxSize">500</span> MB per file</p>
+          <p class="dropzone__hint">or click to browse · max <span id="maxSize">500 MB</span> per file</p>
           <input type="file" id="fileInput" multiple hidden />
         </div>
 
         <!-- Files chosen but not yet uploaded -->
         <ul class="selected" id="selectedList"></ul>
+
+        <p class="hint" id="targetHint" hidden></p>
 
         <div class="upload-actions" id="uploadActions" hidden>
           <button class="btn btn--primary" id="uploadBtn" type="button">Upload</button>
@@ -63,6 +105,7 @@
           <span class="progress__label" id="progressLabel">0%</span>
         </div>
       </section>
+
       <!-- ------------------------------------------------- Files section -->
       <section class="card">
         <div class="card__header">

@@ -19,6 +19,7 @@ const QRCode = require('qrcode');
 const qrcodeTerminal = require('qrcode-terminal');
 
 const app = express();
+
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
