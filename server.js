@@ -28,6 +28,10 @@ const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5 GB per file
 const MAX_FILES_PER_REQUEST = 20;
 
+// Where we remember which device owns which file (so targeted files stay
+// private across restarts). The leading dot keeps it out of the file listing.
+const META_FILE = path.join(UPLOAD_DIR, '.meta.json');
+
 // A device is "online" if we heard from it within this window.
 const DEVICE_TTL = 15_000;
 const DEVICE_COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 days
@@ -195,6 +199,46 @@ function formatBytes(bytes) {
     i += 1;
   }
   return `${Number.isInteger(value) ? value : value.toFixed(1)} ${units[i]}`;
+}
+
+// ---------------------------------------------------------------------------
+// File ownership
+// ---------------------------------------------------------------------------
+// owners: filename -> { from, to, at }
+//   `to === null`  -> shared with everyone
+//   `to === <id>`  -> only the sender and that one device may see/download it
+// Files on disk with no record (e.g. copied in manually) count as public.
+let owners = new Map();
+
+function loadOwners() {
+  try {
+    const raw = fs.readFileSync(META_FILE, 'utf8');
+    owners = new Map(Object.entries(JSON.parse(raw)));
+  } catch {
+    owners = new Map(); // first run, or unreadable file
+  }
+}
+
+let saveTimer = null;
+/** Debounced atomic write, so a burst of uploads only writes once. */
+function saveOwners() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      const tmp = `${META_FILE}.tmp`;
+      await fsp.writeFile(tmp, JSON.stringify(Object.fromEntries(owners), null, 2));
+      await fsp.rename(tmp, META_FILE); // rename is atomic
+    } catch (err) {
+      console.error('Could not save file ownership:', err);
+    }
+  }, 200);
+}
+
+/** May this device see / download / delete this file? */
+function canAccess(filename, deviceId) {
+  const owner = owners.get(filename);
+  if (!owner || owner.to === null) return true; // public
+  return owner.to === deviceId || owner.from === deviceId;
 }
 
 // ---------------------------------------------------------------------------
@@ -398,7 +442,7 @@ app.use(
 // API routes
 // ---------------------------------------------------------------------------
 
-/** GET /api/files -> list every file currently in uploads/ */
+/** GET /api/files -> files this device is allowed to see */
 app.get('/api/files', async (req, res, next) => {
   try {
     const entries = await fsp.readdir(UPLOAD_DIR, { withFileTypes: true });
@@ -406,12 +450,19 @@ app.get('/api/files', async (req, res, next) => {
     const files = await Promise.all(
       entries
         .filter((entry) => entry.isFile() && !entry.name.startsWith('.'))
+        .filter((entry) => canAccess(entry.name, req.deviceId))
         .map(async (entry) => {
           const stats = await fsp.stat(path.join(UPLOAD_DIR, entry.name));
+          const owner = owners.get(entry.name);
           return {
             name: entry.name,
             size: stats.size,
             uploadedAt: stats.mtime.toISOString(),
+            // `private` drives the badge in the UI.
+            private: !!(owner && owner.to !== null),
+            fromName: owner ? deviceName(owner.from) : null,
+            toName: owner && owner.to ? deviceName(owner.to) : null,
+            sentByMe: !!(owner && owner.from === req.deviceId),
           };
         })
     );
@@ -424,7 +475,6 @@ app.get('/api/files', async (req, res, next) => {
     next(err);
   }
 });
-
 
 /**
  * Turn a Multer failure into a friendly JSON response.
@@ -485,6 +535,11 @@ app.get('/api/download/:filename', async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'File not found.' });
     }
 
+    // 404 rather than 403: don't reveal that someone else's file exists.
+    if (!canAccess(path.basename(fullPath), req.deviceId)) {
+      return res.status(404).json({ success: false, error: 'File not found.' });
+    }
+
     // Force a download instead of letting the browser render/execute the file.
     res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -499,7 +554,6 @@ app.get('/api/download/:filename', async (req, res, next) => {
   }
 });
 
-
 /** DELETE /api/files/:filename -> remove a file from uploads/ */
 app.delete('/api/files/:filename', async (req, res, next) => {
   const fullPath = resolveInsideUploads(req.params.filename);
@@ -513,9 +567,16 @@ app.delete('/api/files/:filename', async (req, res, next) => {
       return res.status(404).json({ success: false, error: 'File not found.' });
     }
 
+    const name = path.basename(fullPath);
+    if (!canAccess(name, req.deviceId)) {
+      return res.status(404).json({ success: false, error: 'File not found.' });
+    }
+
     await fsp.unlink(fullPath);
+    owners.delete(name);
+    saveOwners();
     broadcast('files:changed');
-    res.json({ success: true, message: 'File deleted.', name: path.basename(fullPath) });
+    res.json({ success: true, message: 'File deleted.', name });
   } catch (err) {
     if (err.code === 'ENOENT') {
       return res.status(404).json({ success: false, error: 'File not found.' });
@@ -523,7 +584,6 @@ app.delete('/api/files/:filename', async (req, res, next) => {
     next(err);
   }
 });
-
 
 // ---------------------------------------------------------------------------
 // Devices
@@ -809,6 +869,8 @@ app.use((err, req, res, next) => {
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
+loadOwners();
+
 // Expire stale offers and forget devices that went away.
 const sweeper = setInterval(sweep, 10_000);
 
