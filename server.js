@@ -9,10 +9,12 @@
  */
 
 const express = require('express');
+const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const fsp = require('fs').promises;
 const os = require('os');
+const QRCode = require('qrcode');
 const qrcodeTerminal = require('qrcode-terminal');
 
 const app = express();
@@ -22,6 +24,8 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = '0.0.0.0'; // listen on every network interface -> reachable on LAN
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
+const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5 GB per file
+const MAX_FILES_PER_REQUEST = 20;
 
 // Create the uploads directory on startup if it is missing.
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -115,6 +119,33 @@ function getLocalIPv4() {
 }
 
 // ---------------------------------------------------------------------------
+// Multer setup (handles multipart/form-data uploads)
+// ---------------------------------------------------------------------------
+const storage = multer.diskStorage({
+  destination(req, file, cb) {
+    cb(null, UPLOAD_DIR);
+  },
+  async filename(req, file, cb) {
+    try {
+      // Browsers may send latin1-decoded names; re-decode as UTF-8.
+      const decoded = Buffer.from(file.originalname, 'latin1').toString('utf8');
+      const safe = sanitizeFilename(decoded);
+      cb(null, await uniqueFilename(safe));
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: MAX_FILE_SIZE,
+    files: MAX_FILES_PER_REQUEST,
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Middleware
 // ---------------------------------------------------------------------------
 
@@ -128,6 +159,148 @@ app.use(
     dotfiles: 'ignore',
   })
 );
+
+// ---------------------------------------------------------------------------
+// API routes
+// ---------------------------------------------------------------------------
+
+/** GET /api/files -> list every file currently in uploads/ */
+app.get('/api/files', async (req, res, next) => {
+  try {
+    const entries = await fsp.readdir(UPLOAD_DIR, { withFileTypes: true });
+
+    const files = await Promise.all(
+      entries
+        .filter((entry) => entry.isFile() && !entry.name.startsWith('.'))
+        .map(async (entry) => {
+          const stats = await fsp.stat(path.join(UPLOAD_DIR, entry.name));
+          return {
+            name: entry.name,
+            size: stats.size,
+            uploadedAt: stats.mtime.toISOString(),
+          };
+        })
+    );
+
+    // Newest first.
+    files.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+
+    res.json({ success: true, count: files.length, files });
+  } catch (err) {
+    next(err);
+  }
+});
+
+
+/** POST /api/upload -> accept one or many files (field name: "files") */
+app.post('/api/upload', (req, res) => {
+  upload.array('files', MAX_FILES_PER_REQUEST)(req, res, (err) => {
+    if (err) {
+      // Translate multer errors into friendly messages / status codes.
+      if (err instanceof multer.MulterError) {
+        const messages = {
+          LIMIT_FILE_SIZE: `File is too large. Maximum size is ${Math.round(
+            MAX_FILE_SIZE / (1024 * 1024)
+          )} MB.`,
+          LIMIT_FILE_COUNT: `Too many files. Maximum is ${MAX_FILES_PER_REQUEST} per upload.`,
+          LIMIT_UNEXPECTED_FILE: 'Unexpected form field. Use the field name "files".',
+        };
+        return res.status(413).json({
+          success: false,
+          error: messages[err.code] || `Upload error: ${err.code}`,
+        });
+      }
+      console.error('Upload failed:', err);
+      return res.status(500).json({ success: false, error: 'Upload failed.' });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, error: 'No files were provided.' });
+    }
+
+    const uploaded = req.files.map((f) => ({
+      name: f.filename,
+      size: f.size,
+      uploadedAt: new Date().toISOString(),
+    }));
+
+    res.status(201).json({
+      success: true,
+      message: `${uploaded.length} file(s) uploaded.`,
+      files: uploaded,
+    });
+  });
+});
+
+
+/** GET /api/download/:filename -> stream a file back as an attachment */
+app.get('/api/download/:filename', async (req, res, next) => {
+  const fullPath = resolveInsideUploads(req.params.filename);
+  if (!fullPath) {
+    return res.status(400).json({ success: false, error: 'Invalid file name.' });
+  }
+
+  try {
+    const stats = await fsp.stat(fullPath);
+    if (!stats.isFile()) {
+      return res.status(404).json({ success: false, error: 'File not found.' });
+    }
+
+    // Force a download instead of letting the browser render/execute the file.
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.download(fullPath, path.basename(fullPath), (err) => {
+      if (err && !res.headersSent) next(err);
+    });
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return res.status(404).json({ success: false, error: 'File not found.' });
+    }
+    next(err);
+  }
+});
+
+
+/** DELETE /api/files/:filename -> remove a file from uploads/ */
+app.delete('/api/files/:filename', async (req, res, next) => {
+  const fullPath = resolveInsideUploads(req.params.filename);
+  if (!fullPath) {
+    return res.status(400).json({ success: false, error: 'Invalid file name.' });
+  }
+
+  try {
+    const stats = await fsp.stat(fullPath);
+    if (!stats.isFile()) {
+      return res.status(404).json({ success: false, error: 'File not found.' });
+    }
+    await fsp.unlink(fullPath);
+    res.json({ success: true, message: 'File deleted.', name: path.basename(fullPath) });
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      return res.status(404).json({ success: false, error: 'File not found.' });
+    }
+    next(err);
+  }
+});
+
+
+/** GET /api/info -> server URL + QR code (data URL) for the frontend */
+app.get('/api/info', async (req, res, next) => {
+  try {
+    const url = `http://${getLocalIPv4()}:${PORT}`;
+    const qr = await QRCode.toDataURL(url, { width: 240, margin: 1 });
+    res.json({
+      success: true,
+      url,
+      qr,
+      maxFileSizeMb: Math.round(MAX_FILE_SIZE / (1024 * 1024)),
+      maxFiles: MAX_FILES_PER_REQUEST,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 
 // 404 for unknown API routes.
 app.use('/api', (req, res) => {
