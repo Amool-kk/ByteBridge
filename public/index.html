@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Local File Share</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📁</text></svg>"
+    />
+  </head>
+  <body>
+    <header class="header">
+      <div class="container header__inner">
+        <div class="brand">
+          <span class="brand__icon">📁</span>
+          <div>
+            <h1 class="brand__title">Local File Share</h1>
+            <p class="brand__subtitle">
+              Share files instantly between devices on the same Wi-Fi. No cloud, no accounts —
+              everything stays on your network.
+            </p>
+          </div>
+        </div>
+
+        <!-- Server address + QR code so a phone can join quickly -->
+        <div class="netcard" id="netcard">
+          <div class="netcard__info">
+            <span class="netcard__label">Open on other devices</span>
+            <a class="netcard__url" id="serverUrl" href="#" target="_blank" rel="noopener">…</a>
+            <button class="btn btn--ghost btn--sm" id="copyUrlBtn" type="button">Copy link</button>
+          </div>
+          <img class="netcard__qr" id="qrImage" alt="QR code for the server address" />
+        </div>
+      </div>
+    </header>
+
+    <main class="container main">
+      <!-- ------------------------------------------------- Upload section -->
+      <section class="card">
+        <h2 class="card__title">Upload files</h2>
+
+        <div class="dropzone" id="dropzone" tabindex="0" role="button"
+             aria-label="Choose files or drop them here">
+          <div class="dropzone__icon">⬆️</div>
+          <p class="dropzone__text"><strong>Drag &amp; drop</strong> files here</p>
+          <p class="dropzone__hint">or click to browse · max <span id="maxSize">500</span> MB per file</p>
+          <input type="file" id="fileInput" multiple hidden />
+        </div>
+
+        <!-- Files chosen but not yet uploaded -->
+        <ul class="selected" id="selectedList"></ul>
+
+        <div class="upload-actions" id="uploadActions" hidden>
+          <button class="btn btn--primary" id="uploadBtn" type="button">Upload</button>
+          <button class="btn btn--ghost" id="clearBtn" type="button">Clear</button>
+        </div>
+
+        <!-- Upload progress -->
+        <div class="progress" id="progressWrap" hidden>
+          <div class="progress__bar"><div class="progress__fill" id="progressFill"></div></div>
+          <span class="progress__label" id="progressLabel">0%</span>
+        </div>
+      </section>
+      <!-- ------------------------------------------------- Files section -->
+      <section class="card">
+        <div class="card__header">
+          <h2 class="card__title">Shared files <span class="badge" id="fileCount">0</span></h2>
+          <div class="card__tools">
+            <input
+              class="search"
+              type="search"
+              id="searchInput"
+              placeholder="Search files…"
+              aria-label="Search files by name"
+            />
+            <button class="btn btn--ghost btn--sm" id="refreshBtn" type="button">Refresh</button>
+          </div>
+        </div>
+
+        <div id="fileList" class="filelist"></div>
+        <p class="empty" id="emptyState">No files shared yet. Upload something to get started.</p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container">Local File Share · Node.js + Express · files stored in <code>uploads/</code></div>
+    </footer>
+
+    <!-- Toast notifications -->
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
