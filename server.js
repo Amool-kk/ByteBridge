@@ -14,6 +14,7 @@ const path = require('path');
 const fs = require('fs');
 const fsp = require('fs').promises;
 const os = require('os');
+const crypto = require('crypto');
 const QRCode = require('qrcode');
 const qrcodeTerminal = require('qrcode-terminal');
 
@@ -26,6 +27,10 @@ const HOST = '0.0.0.0'; // listen on every network interface -> reachable on LAN
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5 GB per file
 const MAX_FILES_PER_REQUEST = 20;
+
+// A device is "online" if we heard from it within this window.
+const DEVICE_TTL = 15_000;
+const DEVICE_COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 days
 
 // Create the uploads directory on startup if it is missing.
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -176,6 +181,53 @@ function scoreAddress(name, address) {
 }
 
 // ---------------------------------------------------------------------------
+// Devices (presence)
+// ---------------------------------------------------------------------------
+// devices: deviceId -> { name, ip, lastSeen }
+const devices = new Map();
+
+/** Minimal cookie parser - avoids pulling in cookie-parser. */
+function parseCookies(header = '') {
+  const out = {};
+  for (const part of header.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq < 0) continue;
+    const key = part.slice(0, eq).trim();
+    if (key) out[key] = decodeURIComponent(part.slice(eq + 1).trim());
+  }
+  return out;
+}
+
+/** "iPhone", "Mac", "Windows PC" - a friendly label from the User-Agent. */
+function describeDevice(ua = '') {
+  if (/iPhone/i.test(ua)) return 'iPhone';
+  if (/iPad/i.test(ua)) return 'iPad';
+  if (/Android/i.test(ua)) return 'Android phone';
+  if (/Macintosh|Mac OS X/i.test(ua)) return 'Mac';
+  if (/Windows/i.test(ua)) return 'Windows PC';
+  if (/CrOS/i.test(ua)) return 'Chromebook';
+  if (/Linux/i.test(ua)) return 'Linux PC';
+  return 'Device';
+}
+
+function deviceName(id) {
+  return devices.get(id)?.name || 'Unknown device';
+}
+
+/** A device counts as online if we heard from it recently. */
+function isOnline(id) {
+  const d = devices.get(id);
+  return !!d && Date.now() - d.lastSeen <= DEVICE_TTL;
+}
+
+
+function pruneDevices() {
+  for (const id of [...devices.keys()]) {
+    if (!isOnline(id)) devices.delete(id);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Multer setup (handles multipart/form-data uploads)
 // ---------------------------------------------------------------------------
 const storage = multer.diskStorage({
@@ -205,6 +257,40 @@ const upload = multer({
 // ---------------------------------------------------------------------------
 // Middleware
 // ---------------------------------------------------------------------------
+
+/**
+ * Give every browser a stable, unguessable device id in a cookie, and record
+ * that it is alive. `SameSite=Strict` is essential: without it any website you
+ * visit could make authenticated requests to this server (CSRF).
+ */
+app.use((req, res, next) => {
+  const cookies = parseCookies(req.headers.cookie);
+  let id = cookies.did;
+
+  // Only accept ids in the exact shape we issue.
+  if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{32}$/.test(id)) id = null;
+
+  if (!id) {
+    id = crypto.randomBytes(24).toString('base64url'); // 32 chars
+    res.setHeader(
+      'Set-Cookie',
+      `did=${id}; Path=/; Max-Age=${DEVICE_COOKIE_MAX_AGE}; HttpOnly; SameSite=Strict`
+    );
+  }
+
+  req.deviceId = id;
+
+  const existing = devices.get(id);
+  devices.set(id, {
+    // Keep a custom name the user set; otherwise derive one from the browser.
+    name: existing?.name || describeDevice(req.headers['user-agent']),
+    ip: req.socket.remoteAddress,
+    lastSeen: Date.now(),
+  });
+
+  next();
+});
+
 
 app.use(express.json({ limit: '100kb' }));
 
@@ -338,6 +424,38 @@ app.delete('/api/files/:filename', async (req, res, next) => {
     }
     next(err);
   }
+});
+
+
+// ---------------------------------------------------------------------------
+// Devices
+// ---------------------------------------------------------------------------
+
+/** GET /api/devices -> who else has the page open right now */
+app.get('/api/devices', (req, res) => {
+  pruneDevices();
+
+  const list = [...devices.keys()].map((id) => ({
+    id,
+    name: deviceName(id),
+    isYou: id === req.deviceId,
+  }));
+
+  res.json({ success: true, you: req.deviceId, devices: list });
+});
+
+/** POST /api/devices/me -> rename this device */
+app.post('/api/devices/me', (req, res) => {
+  // eslint-disable-next-line no-control-regex
+  const name = String(req.body?.name ?? '').replace(/[\u0000-\u001f]/g, '').trim().slice(0, 40);
+  if (!name) {
+    return res.status(400).json({ success: false, error: 'Name cannot be empty.' });
+  }
+
+  const device = devices.get(req.deviceId);
+  if (device) device.name = name;
+
+  res.json({ success: true, name });
 });
 
 
