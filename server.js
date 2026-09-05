@@ -31,6 +31,7 @@ const MAX_FILES_PER_REQUEST = 20;
 // A device is "online" if we heard from it within this window.
 const DEVICE_TTL = 15_000;
 const DEVICE_COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 days
+const MAX_SSE_PER_DEVICE = 5; // tabs open per device
 
 // Create the uploads directory on startup if it is missing.
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -214,18 +215,48 @@ function deviceName(id) {
   return devices.get(id)?.name || 'Unknown device';
 }
 
-/** A device counts as online if we heard from it recently. */
+/** A device with an open event stream counts as online even if idle. */
 function isOnline(id) {
+  if (listeners.has(id)) return true;
   const d = devices.get(id);
   return !!d && Date.now() - d.lastSeen <= DEVICE_TTL;
 }
-
 
 function pruneDevices() {
   for (const id of [...devices.keys()]) {
     if (!isOnline(id)) devices.delete(id);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Server-Sent Events (plain HTTP push - no WebSocket needed)
+// ---------------------------------------------------------------------------
+// listeners: deviceId -> Set<response>   (a device may have several tabs open)
+const listeners = new Map();
+
+function sseSend(res, type, data) {
+  res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+/** Push an event to every tab of one device. */
+function notify(deviceId, type, data = {}) {
+  for (const res of listeners.get(deviceId) || []) sseSend(res, type, data);
+}
+
+/** Push an event to everyone (used when the device list changes). */
+function broadcast(type, data = {}) {
+  for (const set of listeners.values()) {
+    for (const res of set) sseSend(res, type, data);
+  }
+}
+
+/** Forget devices that went away. Runs on a timer. */
+function sweep() {
+  const before = devices.size;
+  pruneDevices();
+  if (devices.size !== before) broadcast('devices:changed');
+}
+
 
 // ---------------------------------------------------------------------------
 // Multer setup (handles multipart/form-data uploads)
@@ -281,16 +312,17 @@ app.use((req, res, next) => {
   req.deviceId = id;
 
   const existing = devices.get(id);
+  const wasKnown = !!existing;
   devices.set(id, {
     // Keep a custom name the user set; otherwise derive one from the browser.
     name: existing?.name || describeDevice(req.headers['user-agent']),
     ip: req.socket.remoteAddress,
     lastSeen: Date.now(),
   });
+  if (!wasKnown) broadcast('devices:changed');
 
   next();
 });
-
 
 app.use(express.json({ limit: '100kb' }));
 
@@ -416,7 +448,9 @@ app.delete('/api/files/:filename', async (req, res, next) => {
     if (!stats.isFile()) {
       return res.status(404).json({ success: false, error: 'File not found.' });
     }
+
     await fsp.unlink(fullPath);
+    broadcast('files:changed');
     res.json({ success: true, message: 'File deleted.', name: path.basename(fullPath) });
   } catch (err) {
     if (err.code === 'ENOENT') {
@@ -454,10 +488,45 @@ app.post('/api/devices/me', (req, res) => {
 
   const device = devices.get(req.deviceId);
   if (device) device.name = name;
+  broadcast('devices:changed');
 
   res.json({ success: true, name });
 });
 
+/** GET /api/events -> Server-Sent Events stream (plain HTTP push) */
+app.get('/api/events', (req, res) => {
+  const set = listeners.get(req.deviceId) || new Set();
+  if (set.size >= MAX_SSE_PER_DEVICE) {
+    return res.status(429).json({ success: false, error: 'Too many open connections.' });
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+  });
+  res.write(':ok\n\n'); // flush headers immediately
+
+  set.add(res);
+  listeners.set(req.deviceId, set);
+
+  sseSend(res, 'ready', { you: req.deviceId });
+  broadcast('devices:changed');
+
+  // Comment lines keep the connection from being closed as idle.
+  const ping = setInterval(() => {
+    res.write(':ping\n\n');
+    const device = devices.get(req.deviceId);
+    if (device) device.lastSeen = Date.now();
+  }, 25_000);
+
+  req.on('close', () => {
+    clearInterval(ping);
+    set.delete(res);
+    if (set.size === 0) listeners.delete(req.deviceId);
+    broadcast('devices:changed');
+  });
+});
 
 /** GET /api/info -> server URL + QR code (data URL) for the frontend */
 app.get('/api/info', async (req, res, next) => {
@@ -493,6 +562,9 @@ app.use((err, req, res, next) => {
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
+// Forget devices that went away.
+const sweeper = setInterval(sweep, 10_000);
+
 const server = app.listen(PORT, HOST, () => {
   const ip = getLocalIPv4();
   const url = `http://${ip}:${PORT}`;
@@ -519,6 +591,11 @@ server.on('error', (err) => {
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     console.log('\nShutting down...');
+    clearInterval(sweeper);
+    // Close every event stream so browsers don't hang on a dead connection.
+    for (const set of listeners.values()) {
+      for (const res of set) res.end();
+    }
     server.close(() => process.exit(0));
   });
 }
