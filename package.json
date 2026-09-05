@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Share files between devices on the same Wi-Fi/LAN network",
   "main": "server.js",
+  "type": "module",
   "scripts": {
     "start": "node server.js"
   },
