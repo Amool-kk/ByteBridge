@@ -1,0 +1,726 @@
+/* ==========================================================================
+   Local File Share - stylesheet
+   Plain CSS, mobile-first, no frameworks.
+   ========================================================================== */
+
+:root {
+  --bg: #0f172a;
+  --bg-soft: #1e293b;
+  --surface: #ffffff;
+  --surface-alt: #f8fafc;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --primary: #4f46e5;
+  --primary-dark: #4338ca;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --radius: 14px;
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.08), 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* `hidden` must win over our `display: flex/grid` rules below. */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--surface-alt);
+  color: var(--text);
+  line-height: 1.55;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  width: min(1080px, 100% - 2rem);
+  margin-inline: auto;
+}
+
+/* ---------------------------------------------------------------- Header */
+.header {
+  background: linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%);
+  color: #fff;
+  padding: 2rem 0 2.5rem;
+}
+
+.header__inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  max-width: 34rem;
+}
+
+.brand__icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.brand__title {
+  margin: 0;
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+}
+
+.brand__subtitle {
+  margin: 0.35rem 0 0;
+  opacity: 0.9;
+  font-size: 0.95rem;
+}
+
+/* Network / QR card */
+.netcard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  backdrop-filter: blur(6px);
+}
+
+.netcard__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+}
+
+.netcard__label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.netcard__url {
+  color: #fff;
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.netcard__url:hover {
+  text-decoration: underline;
+}
+
+.netcard__qr {
+  width: 96px;
+  height: 96px;
+  border-radius: 10px;
+  background: #fff;
+  padding: 4px;
+  display: none; /* shown once loaded */
+}
+
+/* ----------------------------------------------------------------- Main */
+.main {
+  flex: 1;
+  padding: 1.75rem 0 3rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+}
+
+.card__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.card__title {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card__header .card__title {
+  margin: 0;
+}
+
+.card__tools {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 240px;
+}
+
+.badge {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+}
+
+/* A small inline label, e.g. "this device" or "🔒 from iPhone". */
+.tag {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  white-space: nowrap;
+}
+
+/* A labelled control inside a card header. */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.field__label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 8px 8px 0;
+  padding: 0.6rem 0.75rem;
+}
+
+/* -------------------------------------------------------------- Devices */
+.devices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.device {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-alt);
+  padding: 0.35rem 0.6rem 0.35rem 0.75rem;
+}
+
+.device--you {
+  border-color: var(--primary);
+  background: #eef0ff;
+}
+
+/* Green dot: anything in this list is online by definition. */
+.device__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  flex: none;
+}
+
+.device__name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------------- Requests */
+.requests {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.request {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  background: var(--surface-alt);
+}
+
+/* Incoming requests need attention, so make them stand out. */
+.request--incoming {
+  border-color: var(--primary);
+  background: #eef0ff;
+}
+
+.request__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+}
+
+.request__title {
+  font-weight: 600;
+}
+
+.countdown {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  flex: none;
+}
+
+.request__files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.request__files li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.request__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.request__size {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  flex: none;
+}
+
+.request__total {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.request__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+/* ------------------------------------------------------------- Dropzone */
+.dropzone {
+  border: 2px dashed #c7d2fe;
+  border-radius: var(--radius);
+  background: #f5f6ff;
+  padding: 2.25rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.dropzone:hover,
+.dropzone:focus-visible {
+  border-color: var(--primary);
+  background: #eef0ff;
+  outline: none;
+}
+
+.dropzone.is-dragover {
+  border-color: var(--primary);
+  background: #e0e7ff;
+  transform: scale(1.01);
+}
+
+.dropzone__icon {
+  font-size: 2rem;
+}
+
+.dropzone__text {
+  margin: 0.5rem 0 0.15rem;
+}
+
+.dropzone__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* -------------------------------------------------------- Selected list */
+.selected {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.selected__item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.selected__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected__size {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.upload-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* ------------------------------------------------------------- Progress */
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.progress__bar {
+  flex: 1;
+  height: 10px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress__fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--primary), #0ea5e9);
+  transition: width 0.15s linear;
+}
+
+.progress__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 3.5rem;
+  text-align: right;
+}
+
+/* ------------------------------------------------------------- Buttons */
+.btn {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0.55rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.btn--ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--surface-alt);
+}
+
+.netcard .btn--ghost {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #fff;
+}
+
+.netcard .btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.btn--sm {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+.btn--danger {
+  background: #fef2f2;
+  color: var(--danger);
+  border-color: #fecaca;
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: #fee2e2;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+}
+
+.icon-btn:hover {
+  background: #fee2e2;
+  color: var(--danger);
+}
+
+/* -------------------------------------------------------------- Search */
+.search {
+  flex: 1;
+  max-width: 22rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: var(--surface-alt);
+}
+
+.search:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+  background: #fff;
+}
+
+/* ------------------------------------------------------------ File list */
+.filelist {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.file {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.9rem;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  background: var(--surface);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.file:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 2px 10px rgba(79, 70, 229, 0.08);
+}
+
+.file__icon {
+  font-size: 1.6rem;
+  width: 2.6rem;
+  height: 2.6rem;
+  display: grid;
+  place-items: center;
+  background: var(--surface-alt);
+  border-radius: 10px;
+}
+
+.file__meta {
+  min-width: 0;
+}
+
+.file__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file__sub {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.file__actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 1.5rem 0;
+  margin: 0;
+}
+
+/* -------------------------------------------------------------- Footer */
+.footer {
+  background: var(--bg);
+  color: #94a3b8;
+  padding: 1.1rem 0;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.footer code {
+  color: #e2e8f0;
+}
+
+/* -------------------------------------------------------------- Toasts */
+.toasts {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.5rem;
+  z-index: 50;
+  max-width: calc(100% - 2rem);
+}
+
+.toast {
+  background: var(--bg-soft);
+  color: #fff;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  box-shadow: var(--shadow);
+  animation: toast-in 0.2s ease;
+  border-left: 4px solid var(--primary);
+}
+
+.toast--success {
+  border-left-color: var(--success);
+}
+.toast--error {
+  border-left-color: var(--danger);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ------------------------------------------------------------ Responsive */
+@media (max-width: 720px) {
+  .header {
+    padding: 1.5rem 0 2rem;
+  }
+
+  .header__inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .brand__title {
+    font-size: 1.5rem;
+  }
+
+  .netcard {
+    justify-content: space-between;
+  }
+
+  .card__tools {
+    min-width: 100%;
+  }
+
+  .field {
+    justify-content: flex-start;
+  }
+
+  .devices {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .device {
+    border-radius: var(--radius);
+    justify-content: flex-start;
+  }
+
+  .device__name {
+    flex: 1;
+  }
+
+  .search {
+    max-width: none;
+  }
+
+  .file {
+    grid-template-columns: auto 1fr;
+  }
+
+  .file__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 420px) {
+  .netcard__qr {
+    width: 76px;
+    height: 76px;
+  }
+}

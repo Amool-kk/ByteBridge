@@ -1,0 +1,29 @@
+{
+  "name": "bytebridge",
+  "version": "1.0.0",
+  "description": "ByteBridge: share files between devices on the same Wi-Fi/LAN network",
+  "main": "server.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "file-sharing",
+    "lan",
+    "express",
+    "multer"
+  ],
+  "license": "MIT",
+  "overrides": {
+    "qs": "^6.15.4"
+  },
+  "dependencies": {
+    "express": "^4.22.2",
+    "multer": "^2.0.2",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

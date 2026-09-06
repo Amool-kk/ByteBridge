@@ -1,0 +1,25 @@
+# Dependencies (restore with `npm install`; versions are pinned in package-lock.json)
+node_modules/
+
+# Shared files are runtime data, not source. Keep the folder, ignore its contents.
+uploads/*
+!uploads/.gitkeep
+
+# Device-ownership sidecar. Contains device identifiers - never commit it.
+uploads/.meta.json
+uploads/.meta.json.tmp
+
+# Logs and debug output
+*.log
+npm-debug.log*
+logs/
+
+# Local environment overrides (e.g. PORT, LAN_IP)
+.env
+.env.local
+
+# OS and editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
