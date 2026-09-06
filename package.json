@@ -1,9 +1,12 @@
 {
-  "name": "local-file-sharing",
+  "name": "bytebridge",
   "version": "1.0.0",
-  "description": "Share files between devices on the same Wi-Fi/LAN network",
+  "description": "ByteBridge: share files between devices on the same Wi-Fi/LAN network",
   "main": "server.js",
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server.js"
   },

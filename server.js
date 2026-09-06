@@ -1,5 +1,5 @@
 /**
- * Local File Share - entry point
+ * ByteBridge - entry point
  * ------------------------------
  * Serves a small static website (public/) and a JSON API to upload,
  * list, download and delete files stored in the local `uploads/` folder.
@@ -10,6 +10,7 @@
  * The application itself lives in src/ - this file only starts it.
  */
 
+import { spawn } from 'child_process';
 import qrcodeTerminal from 'qrcode-terminal';
 
 import app from './src/app.js';
@@ -24,27 +25,55 @@ loadOwners();
 // Expire stale offers and forget devices that went away.
 const sweeper = setInterval(sweep, 10_000);
 
-const server = app.listen(PORT, HOST, () => {
-  const ip = getLocalIPv4();
-  const url = `http://${ip}:${PORT}`;
+let server;
 
-  console.log('\n  Local File Share is running\n');
-  console.log(`  Local:    http://localhost:${PORT}`);
-  console.log(`  Network:  ${url}`);
-  console.log(`  Uploads:  ${UPLOAD_DIR}\n`);
-  console.log('  Scan this QR code with a phone on the same Wi-Fi:\n');
-  qrcodeTerminal.generate(url, { small: true });
-  console.log('\n  Press Ctrl+C to stop.\n');
-});
+function openBrowser(url) {
+  const launchers = {
+    darwin: ['open'],
+    win32: ['cmd', '/c', 'start', '', url],
+    linux: ['xdg-open', url],
+  };
+  const command = launchers[process.platform];
+  if (!command) return;
 
-server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Try: PORT=4000 npm start`);
-  } else {
-    console.error('Failed to start server:', err);
-  }
-  process.exit(1);
-});
+  const [bin, ...args] = command;
+  if (process.platform === 'darwin') args.push(url);
+
+  const child = spawn(bin, args, { stdio: 'ignore', detached: true });
+  child.on('error', () => {});
+  child.unref();
+}
+
+function boot(portToTry, canFallback = true) {
+  const instance = app.listen(portToTry, HOST, () => {
+    server = instance;
+    const address = instance.address();
+    const activePort = typeof address === 'object' && address ? address.port : portToTry;
+    const ip = getLocalIPv4();
+    const url = `http://${ip}:${activePort}`;
+
+    console.log('\n  ByteBridge is running\n');
+    console.log(`  Local:    http://localhost:${activePort}`);
+    console.log(`  Network:  ${url}`);
+    console.log(`  Uploads:  ${UPLOAD_DIR}\n`);
+    console.log('  Scan this QR code with a phone on the same Wi-Fi:\n');
+    qrcodeTerminal.generate(url, { small: true });
+    console.log('\n  Press Ctrl+C to stop.\n');
+    openBrowser(url);
+  });
+
+  instance.on('error', (err) => {
+    if (err.code === 'EADDRINUSE' && canFallback) {
+      console.warn(`Port ${portToTry} is busy. Retrying on a free port...`);
+      boot(0, false);
+      return;
+    }
+    console.error(err.code === 'EADDRINUSE' ? `Port ${portToTry} is already in use.` : 'Failed to start server:', err);
+    process.exit(1);
+  });
+}
+
+boot(PORT);
 
 // Graceful shutdown.
 for (const signal of ['SIGINT', 'SIGTERM']) {
@@ -58,6 +87,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
     for (const set of listeners.values()) {
       for (const res of set) res.end();
     }
-    server.close(() => process.exit(0));
+    if (server) server.close(() => process.exit(0));
+    else process.exit(0);
   });
 }

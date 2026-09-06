@@ -3,6 +3,7 @@
  */
 
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -15,7 +16,10 @@ export const PORT = Number(process.env.PORT) || 3000;
 export const HOST = '0.0.0.0'; // listen on every network interface -> reachable on LAN
 
 export const PUBLIC_DIR = path.join(ROOT, 'public');
-export const UPLOAD_DIR = path.join(ROOT, 'uploads');
+export const DATA_DIR = process.env.LFS_DIR
+	? path.resolve(process.env.LFS_DIR)
+	: path.join(os.homedir(), 'LocalFileShare');
+export const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5 GB per file
 export const MAX_FILES_PER_REQUEST = 20;
