@@ -1,8 +1,8 @@
 name: Release Script Bundles
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -48,10 +48,13 @@ jobs:
             bytebridge-linux-scripts.tar.gz \
             bytebridge-windows-scripts.zip > bytebridge-release-checksums.txt
 
-      - name: Upload assets to release
-        if: github.event_name == 'release'
+      - name: Publish to scripts-latest release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: scripts-latest
+          name: ByteBridge Scripts (Latest)
+          target_commitish: main
+          make_latest: false
           overwrite_files: true
           files: |
             bytebridge-macos-scripts.tar.gz

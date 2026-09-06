@@ -14,13 +14,11 @@ ByteBridge is a local network file-sharing tool. Start it on one device, open th
 
 Use the scripts from the GitHub Release assets.
 
-- macOS: `bytebridge-macos-scripts.tar.gz`
-- Linux: `bytebridge-linux-scripts.tar.gz`
-- Windows: `bytebridge-windows-scripts.zip`
+- [macOS](https://github.com/Amool-kk/ByteBridge/releases/download/scripts-latest/bytebridge-macos-scripts.tar.gz)
+- [Linux](https://github.com/Amool-kk/ByteBridge/releases/download/scripts-latest/bytebridge-linux-scripts.tar.gz)
+- [Windows](https://github.com/Amool-kk/ByteBridge/releases/download/scripts-latest/bytebridge-windows-scripts.zip)
 
-Release page:
-
-- `https://github.com/Amool-kk/ByteBridge/releases`
+Release page: [ByteBridge Releases](https://github.com/Amool-kk/ByteBridge/releases)
 
 ### macOS
 
@@ -80,10 +78,9 @@ From the project folder:
 
 ## Release Pipeline
 
-- Push/merge to `main` triggers `.github/workflows/build-branch.yml`
-  - Publishes the runnable snapshot to `build`
-- Publishing a GitHub Release triggers `.github/workflows/release-scripts.yml`
-  - Uploads three OS script bundles and a checksum file
+- Push/merge to `main` triggers both `.github/workflows/build-branch.yml` and `.github/workflows/release-scripts.yml`
+  - `.github/workflows/build-branch.yml` publishes the runnable snapshot to `build`
+  - `.github/workflows/release-scripts.yml` updates `scripts-latest` with three OS script bundles and a checksum file
 
 ## Environment Variables
 
