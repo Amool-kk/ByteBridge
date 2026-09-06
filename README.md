@@ -12,23 +12,50 @@ ByteBridge is a local network file-sharing tool. Start it on one device, open th
 
 ## Quick Start
 
+Use the scripts from the GitHub Release assets.
+
+- macOS: `bytebridge-macos-scripts.tar.gz`
+- Linux: `bytebridge-linux-scripts.tar.gz`
+- Windows: `bytebridge-windows-scripts.zip`
+
+Release page:
+
+- `https://github.com/Amool-kk/ByteBridge/releases`
+
 ### macOS
 
-1. Double-click `scripts/unix/start.command`
-2. On first run it installs ByteBridge into `~/Library/Application Support/ByteBridge/app`
-3. Keep the terminal window open while ByteBridge is running
+1. Download and extract `bytebridge-macos-scripts.tar.gz`
+2. Double-click `start.command`
+3. On first run it installs ByteBridge into `~/Library/Application Support/ByteBridge/app`
+4. Keep the terminal window open while ByteBridge is running
 
 ### Linux
 
-1. Run:
-  `chmod +x scripts/unix/start.sh scripts/unix/install.sh`
-2. Start:
-  `./scripts/unix/start.sh`
+1. Download and extract `bytebridge-linux-scripts.tar.gz`
+2. Run:
+  `chmod +x start.sh install.sh`
+3. Start:
+  `./start.sh`
 
 ### Windows
 
-1. Double-click `scripts/windows/start.bat`
-2. Approve PowerShell execution if prompted
+1. Download and extract `bytebridge-windows-scripts.zip`
+2. Double-click `start.bat`
+3. Approve PowerShell execution if prompted
+
+## Branch Model
+
+- `main`
+  - Source of truth for backend, frontend, scripts, docs, and workflows
+- `build`
+  - Auto-generated runnable snapshot for user installs
+  - Intentionally excludes `scripts/`, `.github/`, `demo/`, and `test/`
+
+Why this split:
+
+- Release assets provide the launcher scripts for each OS
+- Installer scripts clone/update only the runnable app from `build`
+- End users get a simple entry point without pulling development files
 
 ## Manual Start (developer mode)
 
@@ -50,6 +77,13 @@ From the project folder:
 - If app files are missing, scripts clone the configured branch.
 - If app files already exist, scripts ask before pulling updates.
 - If Node.js is missing or older than 18, scripts ask before installing/upgrading.
+
+## Release Pipeline
+
+- Push/merge to `main` triggers `.github/workflows/build-branch.yml`
+  - Publishes the runnable snapshot to `build`
+- Publishing a GitHub Release triggers `.github/workflows/release-scripts.yml`
+  - Uploads three OS script bundles and a checksum file
 
 ## Environment Variables
 
@@ -80,7 +114,7 @@ This is separate from the installed app directory so app updates do not remove s
 - QR code does not open on phone:
   - Ensure both devices are on the same Wi-Fi and VPN is off.
 - Windows script cannot run:
-  - Right-click `scripts/windows/start.bat` and run as normal user, then allow PowerShell if prompted.
+  - Right-click `start.bat` and run as normal user, then allow PowerShell if prompted.
 - Node install step fails:
   - Install Node.js 18+ manually from `https://nodejs.org` and rerun script.
 
@@ -91,4 +125,5 @@ This is separate from the installed app directory so app updates do not remove s
 - Static UI: `public/`
 - Upload middleware writes to `UPLOAD_DIR` from `src/config.js`
 - Build branch sync workflow: `.github/workflows/build-branch.yml`
+- Release scripts workflow: `.github/workflows/release-scripts.yml`
 
