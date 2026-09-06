@@ -1,0 +1,53 @@
+name: Build Branch Sync
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: build-branch-sync
+  cancel-in-progress: true
+
+jobs:
+  publish-build-branch:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install runtime deps
+        run: npm ci --omit=dev
+
+      - name: Build clean snapshot
+        run: |
+          rm -rf /tmp/bytebridge-build
+          mkdir -p /tmp/bytebridge-build
+          rsync -a --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='demo' \
+            --exclude='test' \
+            ./ /tmp/bytebridge-build/
+
+      - name: Publish to build branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd /tmp/bytebridge-build
+          git init
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m "build: sync from ${GITHUB_SHA}"
+          git branch -M build
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --force origin build

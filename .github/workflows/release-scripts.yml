@@ -1,0 +1,60 @@
+name: Release Script Bundles
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: release-script-bundles
+  cancel-in-progress: false
+
+jobs:
+  publish-release-assets:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare bundles
+        run: |
+          set -euo pipefail
+
+          rm -rf dist-release
+          mkdir -p dist-release/macos dist-release/linux dist-release/windows
+
+          cp scripts/unix/install.sh scripts/unix/start.command dist-release/macos/
+          cp scripts/unix/install.sh scripts/unix/start.sh dist-release/linux/
+          cp scripts/windows/install.ps1 scripts/windows/start.bat dist-release/windows/
+
+          tar -czf bytebridge-macos-scripts.tar.gz -C dist-release/macos .
+          tar -czf bytebridge-linux-scripts.tar.gz -C dist-release/linux .
+          (cd dist-release/windows && zip -r ../../bytebridge-windows-scripts.zip .)
+
+          sha256sum \
+            bytebridge-macos-scripts.tar.gz \
+            bytebridge-linux-scripts.tar.gz \
+            bytebridge-windows-scripts.zip > bytebridge-release-checksums.txt
+
+      - name: Upload assets to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            bytebridge-macos-scripts.tar.gz
+            bytebridge-linux-scripts.tar.gz
+            bytebridge-windows-scripts.zip
+            bytebridge-release-checksums.txt
+
+      - name: Upload assets as workflow artifacts (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bytebridge-script-bundles
+          path: |
+            bytebridge-macos-scripts.tar.gz
+            bytebridge-linux-scripts.tar.gz
+            bytebridge-windows-scripts.zip
+            bytebridge-release-checksums.txt
